@@ -1,9 +1,14 @@
 ;; kotoba.bytes — portable byte-vector primitives shared by kotoba-lang
 ;; protocol libraries (TURN/STUN codec, credential HMAC-SHA1 path, and other
 ;; consumers). Every "bytes" value in this library is a plain Clojure vector
-;; of ints in [0,255] (NOT a platform byte-array), so the exact same code
-;; runs unmodified on the JVM and in ClojureScript — there is nothing to
-;; reader-conditional here and nothing to diverge.
+;; of ints in [0,255] (NOT a platform byte-array), so almost all of this
+;; code runs unmodified on the JVM and in ClojureScript. The one exception
+;; is `utf8-encode`'s single `code-unit-at` accessor (below), a reader
+;; conditional needed because :clj and :cljs disagree on how to pull a
+;; UTF-16 code unit's numeric value out of an indexed string character —
+;; discovered as a real bug (silently encoded every string as all-zero
+;; bytes under :cljs) while building kotoba-lang/wire, this library's first
+;; consumer actually exercised under a ClojureScript runtime (nbb).
 (ns kotoba.bytes)
 
 (defn u8 [n] (bit-and n 0xff))
@@ -41,20 +46,39 @@
   [bs n]
   (into (vec bs) (repeat n 0)))
 
+(defn- code-unit-at
+  "The UTF-16 code unit (0..0xFFFF) at index i of string s. `(int (nth s i))`
+   gives this on the JVM (String/nth -> Character, int coerces a Character
+   to its code point) but NOT under ClojureScript — a JS string indexed via
+   `nth` yields a length-1 *string*, and cljs's `int` does not coerce a
+   string to a numeric code point (it silently returns 0 for any non-numeric
+   input), so every call site that did `(int (nth s i))` here silently
+   encoded every character as a NUL byte under :cljs — verified empirically
+   under nbb (kotoba-lang/wire's Step 1, 2026-07). `.charAt`/`.charCodeAt`
+   are genuinely platform-divergent accessors for the same UTF-16 code-unit
+   value, so this one seam uses a reader conditional (same pattern already
+   used elsewhere in this library's own test suite, e.g.
+   kotoba.bytes.sha1-test's `hex` helper) rather than silently producing
+   wrong bytes under one platform."
+  [^String s i]
+  #?(:clj (int (.charAt s i))
+     :cljs (.charCodeAt s i)))
+
 (defn utf8-encode
   "Encode a string to a UTF-8 byte vector. Pure/portable: handles the BMP plus
-   surrogate-pair codepoints (>0xFFFF) without relying on any platform string
-   API, so :clj and :cljs produce byte-identical output."
+   surrogate-pair codepoints (>0xFFFF), :clj and :cljs produce byte-identical
+   output (see code-unit-at for the one platform-divergent accessor this
+   needs to actually achieve that, rather than merely claim it)."
   [^String s]
   (let [len (count s)]
     (loop [i 0 out (transient [])]
       (if (>= i len)
         (persistent! out)
-        (let [c1 (int (nth s i))]
+        (let [c1 (code-unit-at s i)]
           (cond
             ;; surrogate pair -> single codepoint > 0xFFFF
             (and (<= 0xD800 c1 0xDBFF) (< (inc i) len))
-            (let [c2 (int (nth s (inc i)))]
+            (let [c2 (code-unit-at s (inc i))]
               (if (<= 0xDC00 c2 0xDFFF)
                 (let [cp (+ 0x10000
                             (bit-shift-left (- c1 0xD800) 10)

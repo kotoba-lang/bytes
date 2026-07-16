@@ -11,8 +11,12 @@ ClojureScript.
 - **`kotoba.bytes`** — portable byte-vector primitives (u16/u32 big-endian
   codecs, XOR, right-padding, base64 encode/decode, UTF-8 encode,
   constant-time equality). Every "bytes" value in this library is a plain
-  `vector<int 0..255>`, never a platform byte-array, so the exact same code
-  runs on the JVM and in ClojureScript with nothing to reader-conditional.
+  `vector<int 0..255>`, never a platform byte-array, so almost all of this
+  code runs on the JVM and in ClojureScript unmodified — the sole exception
+  is `utf8-encode`'s internal UTF-16-code-unit accessor, which needs one
+  small reader conditional (`.charAt` vs `.charCodeAt`) to actually produce
+  byte-identical output on both platforms, not just claim to (see the
+  `kotoba.bytes/code-unit-at` docstring for the bug this fixed).
 - **`kotoba.bytes.sha1`** — pure SHA-1 (FIPS 180-4) + HMAC-SHA1 (RFC 2104), no
   platform crypto API. Depends only on `kotoba.bytes`.
 
