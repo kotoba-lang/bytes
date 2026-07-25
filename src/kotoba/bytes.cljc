@@ -180,3 +180,48 @@
         (zero? diff)
         (recur (inc i)
                (bit-or diff (bit-xor (int (get a i 0)) (int (get b i 0)))))))))
+
+;; ── hex ──────────────────────────────────────────────────────────────────────
+;;
+;; A byte-vector's hex form is the lingua franca of digests, signatures and
+;; content identifiers, and it was hand-rolled in 33 repos here (and parsed back
+;; in 36). The implementations differ in ways that only show up at the edges:
+;; some build the string with `(.toString b 16)` and forget to pad a byte below
+;; 0x10, some emit uppercase where a protocol demands lowercase. Neither
+;; mistake is visible until a signature is rejected.
+
+(def ^:private hex-digits "0123456789abcdef")
+
+(defn hex
+  "Lowercase hex encoding of a byte-vector. Every byte becomes exactly two
+   characters, including bytes below 0x10 — the padding a `toString(16)`-based
+   encoder silently drops."
+  [bs]
+  (apply str (mapcat (fn [b]
+                       (let [v (u8 b)]
+                         [(nth hex-digits (bit-shift-right v 4))
+                          (nth hex-digits (bit-and v 0xf))]))
+                     bs)))
+
+(defn- hex-val [c]
+  (let [n #?(:clj (int ^char c) :cljs (.charCodeAt c 0))]
+    (cond
+      (<= 48 n 57)  (- n 48)          ; 0-9
+      (<= 97 n 102) (- n 87)          ; a-f
+      (<= 65 n 70)  (- n 55)          ; A-F
+      :else nil)))
+
+(defn unhex
+  "Decode a hex string to a byte-vector. Accepts either case. Returns nil on an
+   odd length or a non-hex character rather than guessing — a truncated or
+   corrupted digest should fail loudly, not decode to something plausible."
+  [s]
+  (let [s (str s)]
+    (when (even? (count s))
+      (loop [i 0 out (transient [])]
+        (if (>= i (count s))
+          (persistent! out)
+          (let [hi (hex-val (nth s i))
+                lo (hex-val (nth s (inc i)))]
+            (when (and hi lo)
+              (recur (+ i 2) (conj! out (bit-or (bit-shift-left hi 4) lo))))))))))

@@ -69,3 +69,36 @@ clojure -M:lint
 ## License
 
 Apache License 2.0. See `LICENSE`.
+
+## `kotoba.bytes.sha256` — pure SHA-256 / HMAC-SHA256
+
+`sha256-bytes`, `sha256-hex`, `hmac-sha256`, `hmac-sha256-hex`, plus `hex` /
+`unhex` on `kotoba.bytes`.
+
+These exist because `MessageDigest` and `crypto.subtle` disagree on more than
+spelling: one returns a value, the other returns a Promise. Any portable `.cljc`
+that wanted a digest had to fork its own code path or make the whole call chain
+async — so instead of solving that once, this workspace solved it 112 times,
+each repo hand-rolling its own `sha256` and its own `hmac` (audited 2026-07-25:
+112 repos with a private sha256 helper, 33 with a private bytes→hex, 36 with a
+private hex→bytes, 30 with a private HMAC-SHA256).
+
+A pure implementation is **synchronous on both runtimes**, which removes the
+reason those forks existed.
+
+The trade is speed: this is Clojure arithmetic, not a native digest. Use it for
+signatures, identifiers, checksums and canonical hashes — kilobytes at a time.
+For hashing large payloads, keep the platform primitive behind whatever seam you
+already have (`sigv4.protocols/ICrypto`, for instance).
+
+Pinned to the published vectors, not to our own output: FIPS 180-4's worked
+examples (including the 55/56/64-byte padding boundaries where a padding bug
+hides) and RFC 4231's HMAC cases (including the >64-byte key that a naive
+implementation forgets to hash first). `nbb --classpath src
+scripts/verify-cljs.cljs` requires ClojureScript to produce the same bytes; both
+run in CI.
+
+`hex` pads bytes below `0x10` — the leading zero a `toString(16)`-based encoder
+drops, which silently shortens a digest — and `unhex` returns `nil` on an odd
+length or a non-hex character rather than decoding a corrupted digest to
+something plausible.

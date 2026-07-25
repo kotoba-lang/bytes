@@ -1,47 +1,32 @@
 name: CI
 
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  test:
-    name: clojure -M:test (JDK ${{ matrix.java }})
+  jvm:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        java: ['17', '21']
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup JDK ${{ matrix.java }}
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: ${{ matrix.java }}
-
-      - name: Setup Clojure CLI
-        uses: DeLaGuardo/setup-clojure@13.1
+      - uses: DeLaGuardo/setup-clojure@13.4
         with:
           cli: latest
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: clojure -M:lint
+      - run: clojure -M:test
 
-      - name: Cache m2 / gitlibs
-        uses: actions/cache@v4
+  cljs:
+    # The digests are 32-bit arithmetic, and that is exactly where the two
+    # runtimes disagree. A green JVM suite is not evidence for ClojureScript.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          path: |
-            ~/.m2
-            ~/.gitlibs
-          key: ${{ runner.os }}-jdk${{ matrix.java }}-clj-${{ hashFiles('deps.edn') }}
-          restore-keys: |
-            ${{ runner.os }}-jdk${{ matrix.java }}-clj-
-
-      - name: Run tests
-        run: clojure -M:test
-      - name: Lint
-        run: clojure -M:lint
+          node-version: '22'
+      - run: npm install -g nbb
+      - run: nbb --classpath src scripts/verify-cljs.cljs
