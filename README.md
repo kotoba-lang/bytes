@@ -17,6 +17,15 @@ ClojureScript.
   small reader conditional (`.charAt` vs `.charCodeAt`) to actually produce
   byte-identical output on both platforms, not just claim to (see the
   `kotoba.bytes/code-unit-at` docstring for the bug this fixed).
+- **`->bytes` is where that contract is enforced rather than asserted.** A
+  library can say its values are `vector<int 0..255>`, but values arrive from
+  hosts that disagree — a JVM `byte[]` is signed, a `Uint8Array` and a Node
+  `Buffer` are neither `vector?` nor `sequential?`, and a string is not bytes
+  at all until something picks an encoding. `->bytes` is the one function that
+  turns any of those into the shape everything else here promises, so a
+  consumer has one place to convert instead of a private copy per consumer.
+  `nil` stays `nil`: absent and empty are different answers and only the
+  caller can tell them apart.
 - **`kotoba.bytes.sha1`** — pure SHA-1 (FIPS 180-4) + HMAC-SHA1 (RFC 2104), no
   platform crypto API. Depends only on `kotoba.bytes`.
 
@@ -29,6 +38,12 @@ ClojureScript.
 (b/utf8-encode "kotoba")       ;=> [107 111 116 111 98 97]
 (b/base64-encode (b/utf8-encode "hi"))  ;=> "aGk="
 (b/constant-time-eq "abc" "abc")        ;=> true
+
+(b/->bytes (byte-array [1 -1 0]))       ;=> [1 255 0]   (JVM byte[] is signed)
+(b/->bytes (js/Uint8Array.from #js [1 255 0]))  ;=> [1 255 0]
+(b/->bytes "日本語")                     ;=> [230 151 165 ...]  (UTF-8, 9 bytes)
+(b/->bytes nil)                         ;=> nil         (absent, not empty)
+(b/->bytes 42)                          ;=> throws — no byte reading
 ```
 
 ```clojure

@@ -32,6 +32,19 @@
 (ck "hex pads low bytes" "0001020304" (b/hex [0 1 2 3 4]))
 (ck "hex/unhex round-trip over all 256 bytes" (vec (range 256)) (b/unhex (b/hex (vec (range 256)))))
 (ck "unhex refuses odd length" nil (b/unhex "abc"))
+
+;; ->bytes: the JVM suite exercises this against a byte[], which does not exist
+;; here. The containers a store actually hands back under Node are these, and
+;; neither is `sequential?` — the reason the predicate is `seqable?`.
+(ck "->bytes Uint8Array" [1 255 0] (b/->bytes (js/Uint8Array.from #js [1 255 0])))
+(ck "->bytes Buffer" [1 255 0] (b/->bytes (.from js/Buffer #js [1 255 0])))
+(ck "->bytes js array" [1 255 0] (b/->bytes #js [1 255 0]))
+(ck "->bytes nil stays nil (absent is not empty)" nil (b/->bytes nil))
+(ck "->bytes [] stays empty" [] (b/->bytes []))
+(ck "->bytes masks out of range" [44 255] (b/->bytes [300 -1]))
+(ck "->bytes utf8-encodes, byte-identical to the JVM" [230 151 165 230 156 172 232 170 158] (b/->bytes "日本語"))
+(ck "->bytes throws on a value with no byte reading" true
+    (try (b/->bytes 42) false (catch :default _ true)))
 (println)
 (if (zero? @fails) (println "clojurescript agrees with the JVM byte for byte")
   (do (println @fails "FAILED") (set! (.-exitCode js/process) 1)))

@@ -107,6 +107,45 @@
                             (u8 (bit-or 0x80 (bit-and (bit-shift-right c1 6) 0x3F)))
                             (u8 (bit-or 0x80 (bit-and c1 0x3F)))]))))))))
 
+(defn ->bytes
+  "Whatever a host handed over → this library's byte vector.
+
+   Everything above operates on `vector<int 0..255>` and says so; this is the
+   boundary where a value that came from somewhere else becomes one. Host
+   runtimes hand bytes over in their own shapes — a JVM `byte[]` (signed, so
+   0xFF arrives as -1), a `js/Uint8Array`, a Node `Buffer`, a lazy seq — and a
+   library whose stated contract is a vector has to be reachable from all of
+   them or the contract is advice.
+
+   The distinction worth keeping is absent versus empty: `nil` stays `nil`,
+   because a caller asking a store for an object it does not have needs a
+   different answer from one asking for an object that is zero bytes long, and
+   collapsing them here would erase that upstream where it cannot be recovered.
+
+   A string is UTF-8 encoded, which is what `constant-time-eq` already assumes
+   a string means when it is used as bytes. It is not a passthrough: leaving
+   strings alone would let a value that is not a byte vector out of a function
+   whose whole job is that every value leaving it is one.
+
+   Out-of-range ints are masked rather than refused, because `u8` is what every
+   other function here does with them and two answers to that question in one
+   library is worse than either answer.
+
+   Anything with no byte reading throws. Returning `nil` would put it in the
+   same bucket as a missing object, which is the one distinction this is
+   careful to preserve."
+  [x]
+  (cond
+    (nil? x)     nil
+    (string? x)  (utf8-encode x)
+    ;; `seqable?` rather than `sequential?`: it is the predicate that covers a
+    ;; JVM byte[], a Uint8Array and a Buffer, none of which are `sequential?`
+    ;; but all of which are exactly what a host store hands back (verified on
+    ;; both runtimes — see scripts/verify-cljs.cljs).
+    (seqable? x) (mapv u8 x)
+    :else        (throw (ex-info "not convertible to bytes"
+                                 {:value x :type (type x)}))))
+
 (def ^:private b64-alphabet
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
 
