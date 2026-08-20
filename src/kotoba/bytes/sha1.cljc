@@ -29,7 +29,19 @@
         with-marker (conj (vec msg) 0x80)
         rem64 (mod (count with-marker) 64)
         zero-pad (mod (- 56 rem64) 64)
-        hi (m32 (unsigned-bit-shift-right bit-len 32))
+        ;; NOT `(unsigned-bit-shift-right bit-len 32)`. JavaScript's `>>>`
+        ;; masks the shift COUNT modulo 32, so a shift by 32 is a shift by
+        ;; zero: measured 2026-08-20, `(unsigned-bit-shift-right 24 32)` is 0
+        ;; on the JVM and **24** on nbb. The length block then carried 24 in
+        ;; its high word, and every digest this namespace produced on
+        ;; ClojureScript was wrong -- sha1("abc") came out 71347bf0... instead
+        ;; of the FIPS vector a9993e36....
+        ;;
+        ;; The comment above already warned that "a single 64-bit shift is not
+        ;; cljs-safe" and split the length into two words for exactly that
+        ;; reason. The split was right; the shift used to compute the high
+        ;; half was the same hazard again.
+        hi (m32 (quot bit-len 4294967296))
         lo (m32 bit-len)]
     (-> with-marker
         (into (repeat zero-pad 0))

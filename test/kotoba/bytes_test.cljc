@@ -51,7 +51,12 @@
 
 (deftest nothing-unreadable-slips-through-as-a-value
   (testing "a value with no byte reading throws rather than returning nil,"
-    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core/ExceptionInfo)
+    ;; `:cljs cljs.core/ExceptionInfo` reads fine but does not RESOLVE under
+    ;; nbb's SCI interpreter -- the whole namespace failed to load with
+    ;; "Unable to resolve symbol: cljs.core/ExceptionInfo", so this suite ran
+    ;; on the JVM only while the README said the code was identical on both.
+    ;; `:default` is the portable spelling and catches the same ex-info.
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs :default)
                           #"not convertible to bytes"
                           (b/->bytes 42))))
   (testing "because nil is already taken by the absent case"
@@ -82,3 +87,15 @@
     (is (nil? (b/utf8-decode [0x80])) "bare continuation byte")
     (is (nil? (b/utf8-decode [0xE2 0x82])) "truncated 3-byte sequence")
     (is (nil? (b/utf8-decode [0xC2 0x41])) "bad continuation byte")))
+
+(deftest bytes->u32-is-unsigned-on-every-host
+  ;; The docstring promised "unsigned int (0..2^32-1)" and delivered it on the
+  ;; JVM only: ClojureScript's bitwise operators work on SIGNED int32, so a
+  ;; leading byte >= 0x80 came back negative. Measured 2026-08-20 -- this
+  ;; assertion fails on nbb without the `>>> 0` in bytes->u32.
+  (is (= 4294967295 (b/bytes->u32 [0xFF 0xFF 0xFF 0xFF])))
+  (is (= 2147483648 (b/bytes->u32 [0x80 0x00 0x00 0x00])))
+  (is (= 1633837952 (b/bytes->u32 [0x61 0x62 0x63 0x80])) "no leading high bit")
+  (testing "round-trips with u32->bytes"
+    (doseq [v [0 1 2147483648 4294967295]]
+      (is (= v (b/bytes->u32 (b/u32->bytes v))) (str "round-trip " v)))))
