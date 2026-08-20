@@ -65,3 +65,20 @@
       (is (= bs (b/base64-decode (b/base64-encode bs))))))
   (testing "and a coerced string equals the same string encoded directly"
     (is (b/constant-time-eq (b/->bytes "Jefe") (b/utf8-encode "Jefe")))))
+
+(deftest utf8-decode-round-trips-and-refuses-malformed
+  (testing "round-trips with utf8-encode"
+    (doseq [s ["" "hi" "a\nb" "日本語" "\u00e9" "emoji \ud83d\ude00 here"]]
+      (is (= s (b/utf8-decode (b/utf8-encode s))) (str "round-trip: " (pr-str s)))))
+  (testing "ASCII decodes to itself"
+    (is (= "abc" (b/utf8-decode [97 98 99]))))
+  (testing "malformed input returns nil rather than a plausible string"
+    ;; Each of these is what a lenient decoder turns into U+FFFD -- and a
+    ;; string that looks fine is exactly the failure this contract avoids.
+    (is (nil? (b/utf8-decode [0xC0 0x80])) "overlong NUL")
+    (is (nil? (b/utf8-decode [0xE0 0x80 0xAF])) "overlong '/'")
+    (is (nil? (b/utf8-decode [0xED 0xA0 0x80])) "surrogate half U+D800")
+    (is (nil? (b/utf8-decode [0xF5 0x80 0x80 0x80])) "above U+10FFFF")
+    (is (nil? (b/utf8-decode [0x80])) "bare continuation byte")
+    (is (nil? (b/utf8-decode [0xE2 0x82])) "truncated 3-byte sequence")
+    (is (nil? (b/utf8-decode [0xC2 0x41])) "bad continuation byte")))
