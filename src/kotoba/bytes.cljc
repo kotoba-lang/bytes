@@ -149,6 +149,79 @@
 (def ^:private b64-alphabet
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
 
+(defn- code-point->string [cp]
+  #?(:clj (String. (Character/toChars cp))
+     :cljs (js/String.fromCodePoint cp)))
+
+(defn utf8-decode
+  "Decode a UTF-8 byte vector to a string, or **nil** if the bytes are not
+   valid UTF-8 -- the same contract `unhex` and `base64-decode` already use in
+   this namespace, and for the same reason: a corrupted input should fail
+   loudly rather than decode to something plausible.
+
+   The rejections are the point, so they are listed rather than left implicit.
+   Returning U+FFFD for these, which is what a lenient decoder does, turns
+   each of them into a string that looks fine:
+
+   - **overlong encodings** (`C0 80` for NUL, `E0 80 AF` for `/`). The classic
+     way a path or prefix check is bypassed: the checker sees bytes it does
+     not recognise, the decoder produces the character anyway.
+   - **surrogate halves** (U+D800..U+DFFF encoded directly). Not valid UTF-8,
+     and on the ClojureScript side they would silently pair with whatever
+     followed.
+   - **code points above U+10FFFF**, truncated sequences, and continuation
+     bytes that are not `10xxxxxx`.
+
+   Round-trips with `utf8-encode` for every string that function can encode."
+  [bs]
+  (let [v (->bytes bs)
+        n (count v)]
+    (loop [i 0 out []]
+      (if (>= i n)
+        (apply str out)
+        (let [b0 (nth v i)]
+          (cond
+            (< b0 0x80)
+            (recur (inc i) (conj out (code-point->string b0)))
+
+            ;; 0x80..0xC1 -- a continuation byte cannot start a sequence, and
+            ;; C0/C1 can only ever be an overlong two-byte form.
+            (< b0 0xC2) nil
+
+            (< b0 0xE0)
+            (when (< (inc i) n)
+              (let [b1 (nth v (inc i))]
+                (when (= 0x80 (bit-and b1 0xC0))
+                  (recur (+ i 2)
+                         (conj out (code-point->string
+                                    (bit-or (bit-shift-left (- b0 0xC0) 6)
+                                            (- b1 0x80))))))))
+
+            (< b0 0xF0)
+            (when (< (+ i 2) n)
+              (let [b1 (nth v (inc i)) b2 (nth v (+ i 2))]
+                (when (and (= 0x80 (bit-and b1 0xC0)) (= 0x80 (bit-and b2 0xC0)))
+                  (let [cp (bit-or (bit-shift-left (- b0 0xE0) 12)
+                                   (bit-shift-left (- b1 0x80) 6)
+                                   (- b2 0x80))]
+                    (when-not (or (< cp 0x800) (<= 0xD800 cp 0xDFFF))
+                      (recur (+ i 3) (conj out (code-point->string cp))))))))
+
+            (< b0 0xF5)
+            (when (< (+ i 3) n)
+              (let [b1 (nth v (inc i)) b2 (nth v (+ i 2)) b3 (nth v (+ i 3))]
+                (when (and (= 0x80 (bit-and b1 0xC0))
+                           (= 0x80 (bit-and b2 0xC0))
+                           (= 0x80 (bit-and b3 0xC0)))
+                  (let [cp (bit-or (bit-shift-left (- b0 0xF0) 18)
+                                   (bit-shift-left (- b1 0x80) 12)
+                                   (bit-shift-left (- b2 0x80) 6)
+                                   (- b3 0x80))]
+                    (when-not (or (< cp 0x10000) (> cp 0x10FFFF))
+                      (recur (+ i 4) (conj out (code-point->string cp))))))))
+
+            :else nil))))))
+
 (defn base64-encode
   "Standard (RFC 4648) base64 encode of a byte vector, padded with `=`."
   [bs]
