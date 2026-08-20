@@ -21,11 +21,7 @@
 
 (def ^:private mask32 0xffffffff)
 
-(defn- m32 [x]
-  ;; See kotoba.bytes.sha1/m32 -- cljs `bit-and` is signed int32, so the
-  ;; mask does not mask. Measured 2026-08-20.
-  #?(:clj  (bit-and x mask32)
-     :cljs (unsigned-bit-shift-right x 0)))
+(defn- m32 [x] (bit-and x mask32))
 
 (defn- rotr32 [x n]
   (m32 (bit-or (unsigned-bit-shift-right x n) (bit-shift-left x (- 32 n)))))
