@@ -29,12 +29,19 @@
   [(u8 (bit-shift-right n 24)) (u8 (bit-shift-right n 16)) (u8 (bit-shift-right n 8)) (u8 n)])
 
 (defn bytes->u32
-  "Decode 4 big-endian bytes to an unsigned int (0..2^32-1)."
+  "Decode 4 big-endian bytes to an unsigned int (0..2^32-1).
+
+   The `unsigned` in that sentence was true on the JVM only. ClojureScript's
+   bitwise operators work on SIGNED int32, so a leading byte >= 0x80 made
+   `bit-shift-left ... 24` negative and `bit-or` kept it that way: measured
+   2026-08-20, `[0xFF 0xFF 0xFF 0xFF]` decoded to 4294967295 on the JVM and
+   -1 on nbb. `>>> 0` (ToUint32) restores the documented range."
   [[b0 b1 b2 b3]]
-  (bit-or (bit-shift-left (bit-and b0 0xff) 24)
-          (bit-shift-left (bit-and b1 0xff) 16)
-          (bit-shift-left (bit-and b2 0xff) 8)
-          (bit-and b3 0xff)))
+  (let [v (bit-or (bit-shift-left (bit-and b0 0xff) 24)
+                  (bit-shift-left (bit-and b1 0xff) 16)
+                  (bit-shift-left (bit-and b2 0xff) 8)
+                  (bit-and b3 0xff))]
+    #?(:clj v :cljs (unsigned-bit-shift-right v 0))))
 
 (defn xor-bytes
   "XOR two equal-length byte vectors elementwise."
