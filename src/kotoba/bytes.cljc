@@ -237,9 +237,9 @@
            (loop [i 0 out []]
              (if (>= i n)
                out
-               (let [b0 (nth bs i)
-                     b1 (when (< (inc i) n) (nth bs (inc i)))
-                     b2 (when (< (+ i 2) n) (nth bs (+ i 2)))
+               (let [b0 (bit-and (nth bs i) 0xFF)
+                                   b1 (when (< (inc i) n) (bit-and (nth bs (inc i)) 0xFF))
+                                   b2 (when (< (+ i 2) n) (bit-and (nth bs (+ i 2)) 0xFF))
                      triple (bit-or (bit-shift-left b0 16)
                                     (bit-shift-left (or b1 0) 8)
                                     (or b2 0))
