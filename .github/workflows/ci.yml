@@ -29,4 +29,4 @@ jobs:
         with:
           node-version: '22'
       - run: npm install -g nbb
-      - run: nbb --classpath src scripts/verify-cljs.cljs
+      - run: nbb --classpath src scripts/verify-cljs.cljk

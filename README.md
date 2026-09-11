@@ -110,7 +110,7 @@ Pinned to the published vectors, not to our own output: FIPS 180-4's worked
 examples (including the 55/56/64-byte padding boundaries where a padding bug
 hides) and RFC 4231's HMAC cases (including the >64-byte key that a naive
 implementation forgets to hash first). `nbb --classpath src
-scripts/verify-cljs.cljs` requires ClojureScript to produce the same bytes; both
+scripts/verify-cljs.cljk` requires ClojureScript to produce the same bytes; both
 run in CI.
 
 `hex` pads bytes below `0x10` — the leading zero a `toString(16)`-based encoder
