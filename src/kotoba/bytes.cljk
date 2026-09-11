@@ -148,7 +148,7 @@
     ;; `seqable?` rather than `sequential?`: it is the predicate that covers a
     ;; JVM byte[], a Uint8Array and a Buffer, none of which are `sequential?`
     ;; but all of which are exactly what a host store hands back (verified on
-    ;; both runtimes — see scripts/verify-cljs.cljs).
+    ;; both runtimes — see scripts/verify-cljs.cljk).
     (seqable? x) (mapv u8 x)
     :else        (throw (ex-info "not convertible to bytes"
                                  {:value x :type (type x)}))))

@@ -8,7 +8,7 @@
 ;; extension, and `unsigned-bit-shift-right` all behave differently under
 ;; ClojureScript. A green JVM suite says nothing about that.
 ;;
-;;   nbb --classpath src scripts/verify-cljs.cljs
+;;   nbb --classpath src scripts/verify-cljs.cljk
 
 (require '[kotoba.bytes :as b] '[kotoba.bytes.sha256 :as s])
 (def fails (atom 0))
