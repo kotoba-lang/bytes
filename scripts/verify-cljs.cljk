@@ -1,14 +1,14 @@
-#!/usr/bin/env nbb
+#!/usr/bin/env kbb
 ;; verify-cljs.cljs — two-runtime parity check.
 ;;
-;; `clojure -M:test` proves this library on the JVM. That is only half of the
+;; `kbb -M:test` proves this library on the JVM. That is only half of the
 ;; promise: the reason kotoba.bytes.sha256 is a pure implementation rather than
 ;; a MessageDigest wrapper is so that one synchronous digest works on both
 ;; runtimes, and the arithmetic is where they diverge — 32-bit shifts, sign
 ;; extension, and `unsigned-bit-shift-right` all behave differently under
 ;; ClojureScript. A green JVM suite says nothing about that.
 ;;
-;;   nbb --classpath src scripts/verify-cljs.cljk
+;;   kbb --backend sci --classpath src scripts/verify-cljs.cljk
 
 (require '[kotoba.bytes :as b] '[kotoba.bytes.sha256 :as s])
 (def fails (atom 0))
