@@ -77,8 +77,8 @@ replace).
 ## Test
 
 ```
-clojure -M:test
-clojure -M:lint
+kbb -M:test
+kbb -M:lint
 ```
 
 ## License
@@ -109,7 +109,7 @@ already have (`sigv4.protocols/ICrypto`, for instance).
 Pinned to the published vectors, not to our own output: FIPS 180-4's worked
 examples (including the 55/56/64-byte padding boundaries where a padding bug
 hides) and RFC 4231's HMAC cases (including the >64-byte key that a naive
-implementation forgets to hash first). `nbb --classpath src
+implementation forgets to hash first). `kbb --backend sci --classpath src
 scripts/verify-cljs.cljk` requires ClojureScript to produce the same bytes; both
 run in CI.
 
