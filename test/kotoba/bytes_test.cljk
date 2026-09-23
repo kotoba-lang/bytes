@@ -2,7 +2,7 @@
   "`kotoba.bytes` says every value it handles is a `vector<int 0..255>`. These
    are the tests for the one function that has to make that true of values
    arriving from outside."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [kotoba.bytes :as b]))
 
 (defn- host-bytes

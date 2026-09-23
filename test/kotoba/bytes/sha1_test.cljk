@@ -4,7 +4,7 @@
    ClojureScript branch of `kotoba.turn.credential` calls directly. See
    `credential_test.clj` (in kotoba-lang/turn) for the cross-check against the
    JVM `javax.crypto` branch."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [kotoba.bytes :as b]
             [kotoba.bytes.sha1 :as sha1]))
 
