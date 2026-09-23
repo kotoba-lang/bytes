@@ -5,7 +5,7 @@
   examples and the HMAC cases are RFC 4231's. A pure implementation of a
   standard digest is only worth having if it is the standard digest, and the
   only way to know that is to assert the numbers the standard prints."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [kotoba.bytes :as b]
             [kotoba.bytes.sha256 :as s]))
 
