@@ -27,6 +27,21 @@ ClojureScript.
   consumer has one place to convert instead of a private copy per consumer.
   `nil` stays `nil`: absent and empty are different answers and only the
   caller can tell them apart.
+- **Host bytes, the JDK's exact answers** — the one place this library
+  answers the HOST's byte container (`byte[]` on the JVM, `Int8Array` under
+  ClojureScript/kbb, what kbb's `(.getBytes s "UTF-8")` returns) instead of a
+  vector: `base64-decode-bytes` / `base64url-decode-bytes` /
+  `base64mime-decode-bytes` (= `(.decode (Base64/getDecoder|getUrlDecoder|getMimeDecoder) x)`,
+  a String or bytes in; where the JDK throws IllegalArgumentException these
+  throw ex-info `{:kotoba.bytes/error :illegal-base64}`), `utf8-bytes`
+  (= `(.getBytes s UTF_8)`, a lone surrogate is `?`), `utf8-string`
+  (= `(String. b UTF_8)`, U+FFFD at the JDK's granularity) and `->host-bytes`.
+  They exist for code migrating off those JDK calls; the vector functions
+  (`base64-decode`, `utf8-decode`: nil on malformed input) are unchanged.
+  Measured against JDK 21 as the oracle: `test/kotoba/bytes/host_bytes_oracle.edn`
+  (17,338 seeded random + adversarial cases, from
+  `scripts/gen-host-bytes-oracle.cljk`) replays with 0 mismatches on kbb and
+  on the JVM.
 - **`kotoba.bytes.sha1`** — pure SHA-1 (FIPS 180-4) + HMAC-SHA1 (RFC 2104), no
   platform crypto API. Depends only on `kotoba.bytes`.
 
