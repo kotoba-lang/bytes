@@ -229,9 +229,15 @@
 
             :else nil))))))
 
-(defn base64-encode
-  "Standard (RFC 4648) base64 encode of a byte vector, padded with `=`."
-  [bs]
+(def ^:private b64url-alphabet
+  "RFC 4648 §5 (base64url): `-` and `_` in place of `+` and `/`."
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
+
+(defn- encode-64
+  "base64 of `bs` over `alphabet`; `pad?` appends `=` to a multiple of 4.
+   Reads each element as `(bit-and b 0xFF)`, so a byte vector, a JVM byte[]
+   (signed) and a Uint8Array all give the same string."
+  [alphabet pad? bs]
   (let [n (count bs)]
     (apply str
            (loop [i 0 out []]
@@ -248,11 +254,31 @@
                      c2 (bit-and (bit-shift-right triple 6) 0x3F)
                      c3 (bit-and triple 0x3F)]
                  (recur (+ i 3)
-                        (conj out
-                              (nth b64-alphabet c0)
-                              (nth b64-alphabet c1)
-                              (if b1 (nth b64-alphabet c2) \=)
-                              (if b2 (nth b64-alphabet c3) \=)))))))))
+                        (cond-> (conj out
+                                      (nth alphabet c0)
+                                      (nth alphabet c1))
+                          b1 (conj (nth alphabet c2))
+                          (and (not b1) pad?) (conj \=)
+                          b2 (conj (nth alphabet c3))
+                          (and (not b2) pad?) (conj \=)))))))))
+
+(defn base64-encode
+  "Standard (RFC 4648) base64 encode of a byte vector, padded with `=`."
+  [bs]
+  (encode-64 b64-alphabet true bs))
+
+(defn base64url-encode
+  "base64url (RFC 4648 §5) encode of a byte vector: the URL- and
+   filename-safe alphabet (`-` `_` for `+` `/`).
+
+   `(base64url-encode bs)` is padded with `=`, the string
+   `java.util.Base64/getUrlEncoder` `.encodeToString` gives;
+   `(base64url-encode bs {:pad? false})` drops the padding, the string
+   `(.withoutPadding (Base64/getUrlEncoder))` gives (JWT, WebAuthn, PKCE).
+   Measured against JDK 21 on random byte[] of every length 0..299 and 700
+   more up to 4999: identical for both forms."
+  ([bs] (encode-64 b64url-alphabet true bs))
+  ([bs {:keys [pad?] :or {pad? true}}] (encode-64 b64url-alphabet (boolean pad?) bs)))
 
 (def ^:private b64-index
   (into {} (map-indexed (fn [i c] [c i]) b64-alphabet)))

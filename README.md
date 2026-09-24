@@ -9,7 +9,8 @@ ClojureScript.
 ## Contract
 
 - **`kotoba.bytes`** — portable byte-vector primitives (u16/u32 big-endian
-  codecs, XOR, right-padding, base64 encode/decode, UTF-8 encode,
+  codecs, XOR, right-padding, base64 encode/decode, base64url encode
+  (padded or not, as `java.util.Base64/getUrlEncoder`), UTF-8 encode,
   constant-time equality). Every "bytes" value in this library is a plain
   `vector<int 0..255>`, never a platform byte-array, so almost all of this
   code runs on the JVM and in ClojureScript unmodified — the sole exception
@@ -37,6 +38,7 @@ ClojureScript.
 (b/xor-bytes [1 2 3] [1 1 1])  ;=> [0 3 2]
 (b/utf8-encode "kotoba")       ;=> [107 111 116 111 98 97]
 (b/base64-encode (b/utf8-encode "hi"))  ;=> "aGk="
+(b/base64url-encode [0xfb 0xff] {:pad? false})  ;=> "-_8"
 (b/constant-time-eq "abc" "abc")        ;=> true
 
 (b/->bytes (byte-array [1 -1 0]))       ;=> [1 255 0]   (JVM byte[] is signed)
