@@ -84,6 +84,13 @@
     (is (= [0xFFFD] (string->units (b/utf8-string [0xED 0xA0 0x80]))) "an encoded surrogate is one U+FFFD")
     (is (= [0xFFFD 0xFFFD 0xFFFD] (string->units (b/utf8-string [0xE0 0x80 0x80]))) "an overlong 3-byte form is three")
     (is (= [0xFFFD 0x41] (string->units (b/utf8-string [0xC2 0x41])))))
+  (testing "the encoders read every host container (a Uint8Array / Buffer is not ICounted on cljs)"
+    (doseq [x [#?(:clj (byte-array [104 105]) :cljs (js/Uint8Array.from #js [104 105]))
+               #?(:clj (byte-array [104 105]) :cljs (js/Int8Array.from #js [104 105]))
+               #?(:clj (byte-array [104 105]) :cljs (.from (.-Buffer (js/require "buffer")) #js [104 105]))
+               (b/utf8-bytes "hi")]]
+      (is (= "aGk=" (b/base64-encode x)))
+      (is (= "aGk" (b/base64url-encode x {:pad? false})))))
   (testing "nil is refused, not answered (the JDK threw NullPointerException)"
     (doseq [f [b/base64-decode-bytes b/utf8-bytes b/utf8-string]]
       (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs :default) (f nil))))))

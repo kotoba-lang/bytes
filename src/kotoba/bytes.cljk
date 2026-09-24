@@ -238,7 +238,12 @@
    Reads each element as `(bit-and b 0xFF)`, so a byte vector, a JVM byte[]
    (signed) and a Uint8Array all give the same string."
   [alphabet pad? bs]
-  (let [n (count bs)]
+  ;; A Uint8Array / Node Buffer is neither ICounted nor IIndexed under
+  ;; ClojureScript: `count` threw \"No protocol method ICounted.-count\" for the
+  ;; bytes an ed25519 signer hands back on kbb (kotoba-lang/release, measured
+  ;; 2026-09-24). Anything that is not already a vector goes through ->bytes.
+  (let [bs (if (or (nil? bs) (vector? bs)) bs (->bytes bs))
+        n (count bs)]
     (apply str
            (loop [i 0 out []]
              (if (>= i n)
