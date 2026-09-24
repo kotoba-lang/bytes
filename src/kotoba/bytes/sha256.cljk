@@ -17,6 +17,7 @@
 ;; — kilobytes at a time. For hashing large payloads, keep using the platform
 ;; primitive behind whatever seam you already have (e.g. `sigv4.protocols`).
 (ns kotoba.bytes.sha256
+  {:kotoba/export [sha256-bytes hmac-sha256 sha256-hex hmac-sha256-hex]}
   (:require [kotoba.bytes :as b]))
 
 (def ^:private mask32 0xffffffff)
