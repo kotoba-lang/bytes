@@ -8,9 +8,10 @@
   (:require [kotoba.test :as t]
             [kotoba.bytes-test]
             [kotoba.bytes.sha1-test]
-            [kotoba.bytes.sha256-test]))
+            [kotoba.bytes.sha256-test]
+            [kotoba.bytes.host-bytes-test]))
 
 (defmethod t/report [:cljs.test/default :end-run-tests] [m]
   (when-not (t/successful? m) (js/process.exit 1)))
 
-(t/run-tests 'kotoba.bytes-test 'kotoba.bytes.sha1-test 'kotoba.bytes.sha256-test)
+(t/run-tests 'kotoba.bytes-test 'kotoba.bytes.sha1-test 'kotoba.bytes.sha256-test 'kotoba.bytes.host-bytes-test)
