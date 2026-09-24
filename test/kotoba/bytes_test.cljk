@@ -99,3 +99,19 @@
   (testing "round-trips with u32->bytes"
     (doseq [v [0 1 2147483648 4294967295]]
       (is (= v (b/bytes->u32 (b/u32->bytes v))) (str "round-trip " v)))))
+
+(deftest base64url-encode-is-the-jdk-url-encoder
+  ;; expected strings are java.util.Base64 output (JDK 21):
+  ;;   getEncoder / getUrlEncoder / (.withoutPadding (getUrlEncoder))
+  (doseq [[bs std url nopad] [[[] "" "" ""]
+                              [[0xfb] "+w==" "-w==" "-w"]
+                              [[0xfb 0xff] "+/8=" "-_8=" "-_8"]
+                              [[0xfb 0xff 0xbf] "+/+/" "-_-_" "-_-_"]
+                              [[102 111] "Zm8=" "Zm8=" "Zm8"]
+                              [[102 111 111 98 97 114] "Zm9vYmFy" "Zm9vYmFy" "Zm9vYmFy"]]]
+    (is (= std (b/base64-encode bs)) (str "standard " bs))
+    (is (= url (b/base64url-encode bs)) (str "url, padded " bs))
+    (is (= url (b/base64url-encode bs {:pad? true})) (str "url, :pad? true " bs))
+    (is (= nopad (b/base64url-encode bs {:pad? false})) (str "url, unpadded " bs)))
+  (testing "coerced host bytes read the same as the vector"
+    (is (= "Af8A" (b/base64url-encode (b/->bytes (host-bytes)))))))
