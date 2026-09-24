@@ -9,7 +9,11 @@
 ;; discovered as a real bug (silently encoded every string as all-zero
 ;; bytes under :cljs) while building kotoba-lang/wire, this library's first
 ;; consumer actually exercised under a ClojureScript runtime (nbb).
-(ns kotoba.bytes)
+(ns kotoba.bytes
+  {:kotoba/export [u8 u16->bytes bytes->u16 u32->bytes bytes->u32 xor-bytes pad-right utf8-encode
+                  ->bytes utf8-decode base64-encode base64url-encode base64-decode constant-time-eq
+                  hex unhex ->host-bytes base64-decode-bytes base64url-decode-bytes
+                  base64mime-decode-bytes utf8-bytes utf8-string]})
 
 (defn u8 [n] (bit-and n 0xff))
 
