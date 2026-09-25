@@ -56,7 +56,7 @@
     ;; "Unable to resolve symbol: cljs.core/ExceptionInfo", so this suite ran
     ;; on the JVM only while the README said the code was identical on both.
     ;; `:default` is the portable spelling and catches the same ex-info.
-    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs :default)
+    (is (thrown-with-msg? :default
                           #"not convertible to bytes"
                           (b/->bytes 42))))
   (testing "because nil is already taken by the absent case"
