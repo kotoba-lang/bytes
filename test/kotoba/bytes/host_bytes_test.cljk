@@ -38,7 +38,7 @@
         :utf8-bytes (let [r (b/utf8-bytes in)]
                       (if (host-bytes? r) (unsigned r) [:not-host-bytes r]))
         :utf8-string (string->units (b/utf8-string in)))
-      (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) e
+      (catch :default e
         (if (= :illegal-base64 (:kotoba.bytes/error (ex-data e)))
           :throws
           [:other-error (ex-message e)])))))
@@ -72,7 +72,7 @@
                        [b/base64-decode-bytes "QQ=" "Input byte array has wrong 4-byte ending unit"]
                        [b/base64-decode-bytes "QUFBQ" "Last unit does not have enough valid bits"]
                        [b/base64mime-decode-bytes "QQ==QQ" "Input byte array has incorrect ending byte at 5"]]]
-      (let [e (try (f s) nil (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) e e))]
+      (let [e (try (f s) nil (catch :default e e))]
         (is (= :illegal-base64 (:kotoba.bytes/error (ex-data e))) s)
         (is (= msg (ex-message e)) s))))
   (testing "utf8-bytes: host bytes, a lone surrogate is `?`"
@@ -93,4 +93,4 @@
       (is (= "aGk" (b/base64url-encode x {:pad? false})))))
   (testing "nil is refused, not answered (the JDK threw NullPointerException)"
     (doseq [f [b/base64-decode-bytes b/utf8-bytes b/utf8-string]]
-      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs :default) (f nil))))))
+      (is (thrown? :default (f nil))))))
