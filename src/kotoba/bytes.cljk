@@ -455,7 +455,7 @@
 
 (defn base64-encode
   "Standard (RFC 4648) base64 encode of a byte vector, padded with `=`."
-  [bs]
+  [#?@(:kotoba [bs :vector-i64] :default [bs])]
   #?@(:kotoba [:string])
   (encode-64 b64-alphabet true bs))
 
@@ -469,7 +469,7 @@
    `(.withoutPadding (Base64/getUrlEncoder))` gives (JWT, WebAuthn, PKCE).
    Measured against JDK 21 on random byte[] of every length 0..299 and 700
    more up to 4999: identical for both forms."
-  ([bs] (encode-64 b64url-alphabet true bs))
+  ([#?@(:kotoba [bs :vector-i64] :default [bs])] (encode-64 b64url-alphabet true bs))
   ;; Kotoba has no options map: its second argument is `pad?` itself.
   ([#?@(:kotoba [bs :vector-i64 pad? :bool] :default [bs {:keys [pad?] :or {pad? true}}])]
    #?(:kotoba (encode-64 b64url-alphabet pad? bs)
@@ -1013,14 +1013,14 @@
    IllegalArgumentException this throws ex-info {:kotoba.bytes/error
    :illegal-base64} with the JDK's message. Contrast `base64-decode`, which
    answers a vector, or nil."
-  [x]
+  [#?@(:kotoba [x :string] :default [x])]
   #?@(:kotoba [[:option :bytes]])
   (decode-64 b64-std-table false x))
 
 (defn base64url-decode-bytes
   "`(.decode (java.util.Base64/getUrlDecoder) x)`: as `base64-decode-bytes`
    over the RFC 4648 §5 alphabet (`-` `_`; `+` and `/` are illegal)."
-  [x]
+  [#?@(:kotoba [x :string] :default [x])]
   #?@(:kotoba [[:option :bytes]])
   (decode-64 b64-url-table false x))
 
@@ -1028,7 +1028,7 @@
   "`(.decode (java.util.Base64/getMimeDecoder) x)`: as `base64-decode-bytes`,
    except every character outside the alphabet (line separators, spaces, any
    other byte) is ignored, before and after a valid `=` ending."
-  [x]
+  [#?@(:kotoba [x :string] :default [x])]
   #?@(:kotoba [[:option :bytes]])
   (decode-64 b64-std-table true x))
 
